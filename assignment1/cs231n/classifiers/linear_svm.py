@@ -49,7 +49,7 @@ def svm_loss_naive(W, X, y, reg):
   loss += 0.5 * reg * np.sum(W * W)
 
   # Also regularize dW
-  dW += 0.5 * reg * np.sum(W * W)
+  dW += reg * W
 
   #############################################################################
   # TODO:                                                                     #
@@ -78,11 +78,29 @@ def svm_loss_vectorized(W, X, y, reg):
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  scores = np.dot(X, W) # size N x C
+
+  # !!!! It is not that beautiful, I will find a way to fix it !!!!
+  # try to extend the size of correct scores from Nx1 to NxC in order to do the following excute
+  # use CxN ones multiply 1xN to do broadcasting and then Transpose it as NxC
+  correct_scores = np.ones([scores.shape[1], scores.shape[0]]) * scores[np.arange(0, scores.shape[0]), y]
+  correct_scores = correct_scores.T
+
+  delta = np.ones(scores.shape)
+  margin = scores - correct_scores + delta
+  # remove margin element which is less than 0
+  margin[margin < 0] = 0
+  # set y_i in margin as 0, cause we don't count it accutually
+  margin[np.arange(0, scores.shape[0]), y] = 0
+  loss = np.sum(margin)
+  # Average loss
+  loss /= num_train
+  # add regularization term
+  loss += 0.5 * reg * np.sum(W * W)  
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
-
 
   #############################################################################
   # TODO:                                                                     #
@@ -93,7 +111,20 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+  margin = scores - correct_scores + delta # size NxC
+  margin[margin < 0] = 0
+  # only sums up all those meet the condition
+  # and remember not to count y_i
+  margin[margin > 0] = 1
+  margin[np.arange(0, scores.shape[0]), y] = 0
+
+  # set y_i as the total number of the row, and it should be negative
+  margin[np.arange(0, scores.shape[0]), y] = -np.sum(margin, axis=1)
+  dW = np.dot(X.T, margin)
+  # Average dW
+  dW /= num_train
+  # Add regularization term
+  dW += reg * W    
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
